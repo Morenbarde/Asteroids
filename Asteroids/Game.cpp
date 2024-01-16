@@ -1,4 +1,8 @@
 #include "Game.h"
+#include <iostream>
+
+//Pi constant used for calculations
+float PI = 3.141592653;
 
 void Game::initVariables()
 {
@@ -6,10 +10,10 @@ void Game::initVariables()
 	player.position.y = WINDOW_HEIGHT/2;
 	player.velocity.x = 0;
 	player.velocity.y = 0;
-	player.rotation = 0;
 	player.body.setOrigin(player.body.getRadius(), player.body.getRadius()); // Will need to change when changed to sprite
 
 	blast_ptr = NULL;
+	blast_end_ptr = blast_ptr;
 	asteroid_ptr = NULL;
 }
 
@@ -19,6 +23,31 @@ void Game::initWindow()
 	video_mode.height = WINDOW_HEIGHT;
 	window = new sf::RenderWindow(video_mode, "Asteroids", sf::Style::Fullscreen);
 	window->setFramerateLimit(60);
+}
+
+
+//Constant speed for the blasts
+float BLAST_SPEED = 20;
+
+void Game::createBlast()
+{
+	new_blast = new Blast();
+	new_blast->position = player.position;
+	//Since blast speed is constant, can normalize and set constat x and y velocity values
+	new_blast->velocity.x = BLAST_SPEED * sin(player.body.getRotation() * (PI / 180));
+	new_blast->velocity.y = BLAST_SPEED * cos(player.body.getRotation() * (PI / 180));
+
+	new_blast->body.setOrigin(new_blast->body.getRadius(), new_blast->body.getRadius());
+
+	//Make new blast the end of the list
+	if (blast_ptr) {
+		blast_end_ptr->next = new_blast;
+		blast_end_ptr = new_blast;
+	}
+	else {
+		blast_ptr = new_blast;
+		blast_end_ptr = new_blast;
+	}
 }
 
 Game::Game()
@@ -75,6 +104,15 @@ void Game::pollEvents()
 				player_moving_forward = true;
 				break;
 
+			//Fire Blast
+			case sf::Keyboard::Space:
+				//restrict fire rate to 1 blast per button press
+				if (!blaster_locked) {
+					createBlast();
+					blaster_locked = true;
+				}
+				break;
+
 			default:
 				break;
 			}
@@ -101,6 +139,10 @@ void Game::pollEvents()
 				player_moving_forward = false;
 				break;
 
+			case sf::Keyboard::Space:
+				blaster_locked = false;
+				break;
+
 			default:
 				break;
 			}
@@ -114,9 +156,15 @@ void Game::pollEvents()
 
 float ACCELERATION_CONST = .2;
 float DECCELERATION_CONST = .98;
-float PI = 3.141592653;
 
 void Game::update()
+{
+	updatePlayer();
+	updateBlasts();
+	updateAsteroids();
+}
+
+void Game::updatePlayer()
 {
 	//Rotates the player if the keys have been pressed and not released
 	if (player_rotating_right) player.body.rotate(2.f);
@@ -142,10 +190,45 @@ void Game::update()
 
 	//Loops player around the window upon reaching the edge
 	if (player.position.x > WINDOW_WIDTH) player.position.x -= WINDOW_WIDTH;
-	if (player.position.x < 0) player.position.x += WINDOW_WIDTH;
+	else if (player.position.x < 0) player.position.x += WINDOW_WIDTH;
+	
 	if (player.position.y > WINDOW_HEIGHT) player.position.y -= WINDOW_HEIGHT;
-	if (player.position.y < 0) player.position.y += WINDOW_HEIGHT;
+	else if (player.position.y < 0) player.position.y += WINDOW_HEIGHT;
+	
 	player.body.setPosition(player.position);
+}
+
+//TODO add asteroid collission
+void Game::updateBlasts()
+{
+	if (blast_ptr && !blast_ptr->lifespan) {
+		current_blast = blast_ptr->next;
+		delete blast_ptr;
+		blast_ptr = current_blast;
+	}
+	current_blast = blast_ptr;
+
+		while (current_blast) {
+		//Adds velocity to position, y negative due to sfml window having y positive downwards
+		current_blast->position.x += current_blast->velocity.x;
+		current_blast->position.y -= current_blast->velocity.y;
+
+		if (current_blast->position.x > WINDOW_WIDTH) current_blast->position.x -= WINDOW_WIDTH;
+		else if (current_blast->position.x < 0) current_blast->position.x += WINDOW_WIDTH;
+
+		if (current_blast->position.y > WINDOW_HEIGHT) current_blast->position.y -= WINDOW_HEIGHT;
+		else if (current_blast->position.y < 0) current_blast->position.y += WINDOW_HEIGHT;
+		
+		current_blast->body.setPosition(current_blast->position);
+
+		current_blast->lifespan -= 1;
+
+		current_blast = current_blast->next;
+	}
+}
+
+void Game::updateAsteroids()
+{
 }
 
 void Game::render()
@@ -154,10 +237,15 @@ void Game::render()
 	window->draw(player.body);
 
 	current_blast = blast_ptr;
-	while (current_blast) window->draw(current_blast->body);
-	
-	current_asteroid = asteroid_ptr;
-	while (current_asteroid) window->draw(current_asteroid->body);
+	while (current_blast) {
+		window->draw(current_blast->body);
+		current_blast = current_blast->next;
+	}
 
+	current_asteroid = asteroid_ptr;
+	while (current_asteroid) {
+		window->draw(current_asteroid->body);
+		current_asteroid = current_asteroid->next;
+	}
 	window->display();
 }

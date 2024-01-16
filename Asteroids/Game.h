@@ -10,16 +10,16 @@
 struct Ship {
 	sf::Vector2f position;
 	sf::Vector2f velocity;
-	//Used to calculate directional acceleration
-	float rotation;
 	sf::CircleShape body = sf::CircleShape(10.f, 3);
 };
 
 //Ship Weapon, fired with Spacebar
 struct Blast {
 	sf::Vector2f position;
-	float angle;
-	sf::CircleShape body = sf::CircleShape(4.f);
+	sf::Vector2f velocity;
+	sf::CircleShape body = sf::CircleShape(1.f);
+	//Blast lasts for 2 seconds, locked to 60fps
+	int lifespan = 120;
 	Blast *next = NULL;
 };
 
@@ -50,8 +50,11 @@ private:
 	bool player_moving_forward = false;
 
 	//Linked List containing blasts
-	Blast* blast_ptr;
-	Blast* current_blast;
+	Blast *blast_ptr;
+	Blast* blast_end_ptr;
+	Blast *current_blast;
+	Blast *new_blast;
+	bool blaster_locked = false;
 
 	//Linked List containing asteroids
 	Asteroid *asteroid_ptr;
@@ -60,6 +63,8 @@ private:
 	void initVariables();
 	void initWindow();
 
+	void createBlast();
+
 public:
 	Game();
 	~Game();
@@ -67,7 +72,12 @@ public:
 	bool isRunning();
 
 	void pollEvents();
+
 	void update();
+	void updatePlayer();
+	void updateBlasts();
+	void updateAsteroids();
+
 	void render();
 };
 
