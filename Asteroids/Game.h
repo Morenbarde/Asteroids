@@ -6,6 +6,9 @@
 #include <SFML/Audio.hpp>
 #include <SFML/Network.hpp>
 
+#include <stdlib.h>
+#include <time.h>
+
 //Define the structure for the ship the player will control
 struct Ship {
 	sf::Vector2f position;
@@ -19,7 +22,7 @@ struct Blast {
 	sf::Vector2f velocity;
 	sf::CircleShape body = sf::CircleShape(1.f);
 	//Blast lasts for 2 seconds, locked to 60fps
-	int lifespan = 120;
+	int lifespan = 80;
 	Blast *next = NULL;
 };
 
@@ -27,10 +30,10 @@ struct Blast {
 struct Asteroid {
 	sf::Vector2f position;
 	sf::Vector2f velocity;
-	float rotation;
-	float size;
-	sf::CircleShape body;
+	float size = 3;
+	sf::CircleShape body = sf::CircleShape(40.f);
 	Asteroid *next = NULL;
+	Asteroid *prev = NULL;
 };
 
 class Game
@@ -59,11 +62,13 @@ private:
 	//Linked List containing asteroids
 	Asteroid *asteroid_ptr;
 	Asteroid *current_asteroid;
+	Asteroid *new_asteroid;
 
 	void initVariables();
 	void initWindow();
 
 	void createBlast();
+	void createAsteroid();
 
 public:
 	Game();

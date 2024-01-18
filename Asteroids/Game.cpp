@@ -6,6 +6,7 @@ float PI = 3.141592653;
 
 void Game::initVariables()
 {
+	std::srand(time(NULL));
 	player.position.x = WINDOW_WIDTH/2;
 	player.position.y = WINDOW_HEIGHT/2;
 	player.velocity.x = 0;
@@ -38,6 +39,7 @@ void Game::createBlast()
 	new_blast->velocity.y = BLAST_SPEED * cos(player.body.getRotation() * (PI / 180));
 
 	new_blast->body.setOrigin(new_blast->body.getRadius(), new_blast->body.getRadius());
+	new_blast->body.setPosition(new_blast->position);
 
 	//Make new blast the end of the list
 	if (blast_ptr) {
@@ -48,6 +50,58 @@ void Game::createBlast()
 		blast_ptr = new_blast;
 		blast_end_ptr = new_blast;
 	}
+}
+
+//Constant for initial asteroid speed, may be faster when smaller
+float ASTEROID_SPEED = 2.5; 
+
+void Game::createAsteroid()
+{
+	new_asteroid = new Asteroid();
+
+	new_asteroid->body.setFillColor(sf::Color(0,0,0,0));
+	new_asteroid->body.setOutlineThickness(2);
+	new_asteroid->body.setOutlineColor(sf::Color(255,255,255));
+
+	//randomly place asteroid near edge of screen
+	if (rand() % 2) {
+
+		new_asteroid->position.x = rand() % WINDOW_WIDTH;
+
+		if (rand() % 2) {
+			new_asteroid->position.y = rand() % 50 + 50;
+		}
+		else {
+			new_asteroid->position.y = rand() % 50 + (WINDOW_HEIGHT-100);
+		}
+	}
+	else {
+
+		new_asteroid->position.y = rand() % WINDOW_HEIGHT;
+
+		if (rand() % 2) {
+			new_asteroid->position.x = rand() % 50 + 50;
+		}
+		else {
+			new_asteroid->position.x = rand() % 50 + (WINDOW_WIDTH - 100);
+		}
+	}
+	//std::cout << new_asteroid->position.x << " " << new_asteroid->position.y << std::endl;
+
+	//Gives asteroid random direction to travel
+	int asteroid_angle = rand() % 360;
+	new_asteroid->velocity.x = ASTEROID_SPEED * sin(asteroid_angle * (PI / 180));
+	new_asteroid->velocity.y = ASTEROID_SPEED * cos(asteroid_angle * (PI / 180));
+
+	new_asteroid->body.setOrigin(new_asteroid->body.getRadius(), new_asteroid->body.getRadius());
+	new_asteroid->body.setPosition(new_asteroid->position);
+
+	//store asteroids in linked list
+	if (asteroid_ptr) {
+		new_asteroid->next = asteroid_ptr;
+		asteroid_ptr = new_asteroid;
+	}
+	else asteroid_ptr = new_asteroid;
 }
 
 Game::Game()
@@ -112,6 +166,10 @@ void Game::pollEvents()
 					blaster_locked = true;
 				}
 				break;
+
+			//Create Asteroid For Testing
+			case sf::Keyboard::Z:
+				if (sf::Keyboard::isKeyPressed(sf::Keyboard::LAlt)) createAsteroid();
 
 			default:
 				break;
@@ -208,7 +266,7 @@ void Game::updateBlasts()
 	}
 	current_blast = blast_ptr;
 
-		while (current_blast) {
+	while (current_blast) {
 		//Adds velocity to position, y negative due to sfml window having y positive downwards
 		current_blast->position.x += current_blast->velocity.x;
 		current_blast->position.y -= current_blast->velocity.y;
@@ -229,6 +287,23 @@ void Game::updateBlasts()
 
 void Game::updateAsteroids()
 {
+	current_asteroid = asteroid_ptr;
+
+	while (current_asteroid) {
+		//Adds velocity to position, y negative due to sfml window having y positive downwards
+		current_asteroid->position.x += current_asteroid->velocity.x;
+		current_asteroid->position.y -= current_asteroid->velocity.y;
+
+		if (current_asteroid->position.x > WINDOW_WIDTH) current_asteroid->position.x -= WINDOW_WIDTH;
+		else if (current_asteroid->position.x < 0) current_asteroid->position.x += WINDOW_WIDTH;
+
+		if (current_asteroid->position.y > WINDOW_HEIGHT) current_asteroid->position.y -= WINDOW_HEIGHT;
+		else if (current_asteroid->position.y < 0) current_asteroid->position.y += WINDOW_HEIGHT;
+
+		current_asteroid->body.setPosition(current_asteroid->position);
+
+		current_asteroid = current_asteroid->next;
+	}
 }
 
 void Game::render()
