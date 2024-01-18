@@ -44,6 +44,7 @@ void Game::createBlast()
 	//Make new blast the end of the list
 	if (blast_ptr) {
 		blast_end_ptr->next = new_blast;
+		new_blast->prev = blast_end_ptr;
 		blast_end_ptr = new_blast;
 	}
 	else {
@@ -99,9 +100,138 @@ void Game::createAsteroid()
 	//store asteroids in linked list
 	if (asteroid_ptr) {
 		new_asteroid->next = asteroid_ptr;
+		asteroid_ptr->prev = new_asteroid;
 		asteroid_ptr = new_asteroid;
 	}
 	else asteroid_ptr = new_asteroid;
+}
+
+//Update Functions
+
+
+float ACCELERATION_CONST = .2;
+float DECCELERATION_CONST = .98;
+
+void Game::updatePlayer()
+{
+	//Rotates the player if the keys have been pressed and not released
+	if (player_rotating_right) player.body.rotate(2.f);
+	if (player_rotating_left) player.body.rotate(-2.f);
+
+	//Gets the angle of the player in radians
+	float player_rotation = player.body.getRotation();
+
+	//Moves the player if the key has been pressed and not released
+	if (player_moving_forward) {
+		//Normalizes the acceleration and adds to both the x and y directiong
+		player.velocity.x += ACCELERATION_CONST * sin(player_rotation * (PI / 180));
+		player.velocity.y += ACCELERATION_CONST * cos(player_rotation * (PI / 180));
+	}
+	else {
+		player.velocity.x *= DECCELERATION_CONST;
+		player.velocity.y *= DECCELERATION_CONST;
+	}
+
+	//Adds velocity to position, y negative due to sfml window having y positive downwards
+	player.position.x += player.velocity.x;
+	player.position.y -= player.velocity.y;
+
+	//Loops player around the window upon reaching the edge
+	if (player.position.x > WINDOW_WIDTH) player.position.x -= WINDOW_WIDTH;
+	else if (player.position.x < 0) player.position.x += WINDOW_WIDTH;
+
+	if (player.position.y > WINDOW_HEIGHT) player.position.y -= WINDOW_HEIGHT;
+	else if (player.position.y < 0) player.position.y += WINDOW_HEIGHT;
+
+	player.body.setPosition(player.position);
+}
+
+//TODO add asteroid collission
+void Game::updateBlasts()
+{
+	if (blast_ptr && !blast_ptr->lifespan) {
+		current_blast = blast_ptr->next;
+		delete blast_ptr;
+		blast_ptr = current_blast;
+	}
+	current_blast = blast_ptr;
+
+	while (current_blast) {
+		//Adds velocity to position, y negative due to sfml window having y positive downwards
+		current_blast->position.x += current_blast->velocity.x;
+		current_blast->position.y -= current_blast->velocity.y;
+
+		if (current_blast->position.x > WINDOW_WIDTH) current_blast->position.x -= WINDOW_WIDTH;
+		else if (current_blast->position.x < 0) current_blast->position.x += WINDOW_WIDTH;
+
+		if (current_blast->position.y > WINDOW_HEIGHT) current_blast->position.y -= WINDOW_HEIGHT;
+		else if (current_blast->position.y < 0) current_blast->position.y += WINDOW_HEIGHT;
+
+		current_blast->body.setPosition(current_blast->position);
+
+		current_blast->lifespan -= 1;
+
+		current_blast = current_blast->next;
+	}
+}
+
+void Game::updateAsteroids()
+{
+	current_asteroid = asteroid_ptr;
+
+	while (current_asteroid) {
+		//Adds velocity to position, y negative due to sfml window having y positive downwards
+		current_asteroid->position.x += current_asteroid->velocity.x;
+		current_asteroid->position.y -= current_asteroid->velocity.y;
+
+		if (current_asteroid->position.x > WINDOW_WIDTH) current_asteroid->position.x -= WINDOW_WIDTH;
+		else if (current_asteroid->position.x < 0) current_asteroid->position.x += WINDOW_WIDTH;
+
+		if (current_asteroid->position.y > WINDOW_HEIGHT) current_asteroid->position.y -= WINDOW_HEIGHT;
+		else if (current_asteroid->position.y < 0) current_asteroid->position.y += WINDOW_HEIGHT;
+
+		current_asteroid->body.setPosition(current_asteroid->position);
+
+		current_asteroid = current_asteroid->next;
+	}
+}
+
+void Game::checkCollision()
+{
+	//Asteroid-Blast Collision
+	current_blast = blast_ptr;
+	while (current_blast) {
+		current_asteroid = asteroid_ptr;
+		while (current_asteroid) {
+			if (current_asteroid->body.getGlobalBounds().intersects(current_blast->body.getGlobalBounds())) {
+				breakAsteroid();
+				break;
+			}
+			current_asteroid = current_asteroid->next;
+		}
+		current_blast = current_blast->next;
+	}
+}
+
+void Game::breakAsteroid()
+{
+	//Removes Asteroid from linked list
+	if (current_asteroid->prev && current_asteroid->next) {
+		current_asteroid->prev->next = current_asteroid->next;
+		current_asteroid->next->prev = current_asteroid->prev;
+	}
+	else if (current_asteroid->prev) current_asteroid->prev->next = NULL;
+	else if (current_asteroid->next) asteroid_ptr = current_asteroid->next;
+	else asteroid_ptr = NULL;
+}
+
+void Game::breakBlast()
+{
+	//Removes Asteroid from linked list
+	if (!current_blast->prev && !current_blast->next) blast_ptr = NULL;
+	else if (current_blast->prev && current_blast->next) current_blast->prev->next = current_blast->next;
+	else if (current_blast->prev) current_blast->prev->next = NULL;
+	else if (current_blast->next) blast_ptr = current_blast->next;
 }
 
 Game::Game()
@@ -212,98 +342,13 @@ void Game::pollEvents()
 	}
 }
 
-float ACCELERATION_CONST = .2;
-float DECCELERATION_CONST = .98;
-
 void Game::update()
 {
 	updatePlayer();
 	updateBlasts();
 	updateAsteroids();
-}
 
-void Game::updatePlayer()
-{
-	//Rotates the player if the keys have been pressed and not released
-	if (player_rotating_right) player.body.rotate(2.f);
-	if (player_rotating_left) player.body.rotate(-2.f);
-
-	//Gets the angle of the player in radians
-	float player_rotation = player.body.getRotation();
-
-	//Moves the player if the key has been pressed and not released
-	if (player_moving_forward) {
-		//Normalizes the acceleration and adds to both the x and y directiong
-		player.velocity.x += ACCELERATION_CONST * sin(player_rotation * (PI / 180));
-		player.velocity.y += ACCELERATION_CONST * cos(player_rotation * (PI / 180));
-	}
-	else {
-		player.velocity.x *= DECCELERATION_CONST;
-		player.velocity.y *= DECCELERATION_CONST;
-	}
-
-	//Adds velocity to position, y negative due to sfml window having y positive downwards
-	player.position.x += player.velocity.x;
-	player.position.y -= player.velocity.y;
-
-	//Loops player around the window upon reaching the edge
-	if (player.position.x > WINDOW_WIDTH) player.position.x -= WINDOW_WIDTH;
-	else if (player.position.x < 0) player.position.x += WINDOW_WIDTH;
-	
-	if (player.position.y > WINDOW_HEIGHT) player.position.y -= WINDOW_HEIGHT;
-	else if (player.position.y < 0) player.position.y += WINDOW_HEIGHT;
-	
-	player.body.setPosition(player.position);
-}
-
-//TODO add asteroid collission
-void Game::updateBlasts()
-{
-	if (blast_ptr && !blast_ptr->lifespan) {
-		current_blast = blast_ptr->next;
-		delete blast_ptr;
-		blast_ptr = current_blast;
-	}
-	current_blast = blast_ptr;
-
-	while (current_blast) {
-		//Adds velocity to position, y negative due to sfml window having y positive downwards
-		current_blast->position.x += current_blast->velocity.x;
-		current_blast->position.y -= current_blast->velocity.y;
-
-		if (current_blast->position.x > WINDOW_WIDTH) current_blast->position.x -= WINDOW_WIDTH;
-		else if (current_blast->position.x < 0) current_blast->position.x += WINDOW_WIDTH;
-
-		if (current_blast->position.y > WINDOW_HEIGHT) current_blast->position.y -= WINDOW_HEIGHT;
-		else if (current_blast->position.y < 0) current_blast->position.y += WINDOW_HEIGHT;
-		
-		current_blast->body.setPosition(current_blast->position);
-
-		current_blast->lifespan -= 1;
-
-		current_blast = current_blast->next;
-	}
-}
-
-void Game::updateAsteroids()
-{
-	current_asteroid = asteroid_ptr;
-
-	while (current_asteroid) {
-		//Adds velocity to position, y negative due to sfml window having y positive downwards
-		current_asteroid->position.x += current_asteroid->velocity.x;
-		current_asteroid->position.y -= current_asteroid->velocity.y;
-
-		if (current_asteroid->position.x > WINDOW_WIDTH) current_asteroid->position.x -= WINDOW_WIDTH;
-		else if (current_asteroid->position.x < 0) current_asteroid->position.x += WINDOW_WIDTH;
-
-		if (current_asteroid->position.y > WINDOW_HEIGHT) current_asteroid->position.y -= WINDOW_HEIGHT;
-		else if (current_asteroid->position.y < 0) current_asteroid->position.y += WINDOW_HEIGHT;
-
-		current_asteroid->body.setPosition(current_asteroid->position);
-
-		current_asteroid = current_asteroid->next;
-	}
+	checkCollision();
 }
 
 void Game::render()

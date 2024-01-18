@@ -24,6 +24,7 @@ struct Blast {
 	//Blast lasts for 2 seconds, locked to 60fps
 	int lifespan = 80;
 	Blast *next = NULL;
+	Blast* prev = NULL;
 };
 
 //Obstacles
@@ -54,21 +55,33 @@ private:
 
 	//Linked List containing blasts
 	Blast *blast_ptr;
-	Blast* blast_end_ptr;
+	Blast *blast_end_ptr;
 	Blast *current_blast;
 	Blast *new_blast;
+	Blast *dead_blast;
 	bool blaster_locked = false;
 
 	//Linked List containing asteroids
 	Asteroid *asteroid_ptr;
 	Asteroid *current_asteroid;
 	Asteroid *new_asteroid;
+	Asteroid *dead_asteroid;
 
 	void initVariables();
 	void initWindow();
 
 	void createBlast();
 	void createAsteroid();
+
+
+	void updatePlayer();
+	void updateBlasts();
+	void updateAsteroids();
+
+	//Collision functions
+	void checkCollision();
+	void breakAsteroid();
+	void breakBlast();
 
 public:
 	Game();
@@ -79,9 +92,6 @@ public:
 	void pollEvents();
 
 	void update();
-	void updatePlayer();
-	void updateBlasts();
-	void updateAsteroids();
 
 	void render();
 };
