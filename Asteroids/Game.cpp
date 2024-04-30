@@ -11,6 +11,7 @@ void Game::initVariables()
 	player.position.y = WINDOW_HEIGHT/2;
 	player.velocity.x = 0;
 	player.velocity.y = 0;
+	player.body = sf::CircleShape(10.f, 3);
 	player.body.setOrigin(player.body.getRadius(), player.body.getRadius()); // Will need to change when changed to sprite
 
 	blast_ptr = NULL;
@@ -33,7 +34,10 @@ float BLAST_SPEED = 20;
 void Game::createBlast()
 {
 	new_blast = new Blast();
+	new_blast->body = sf::CircleShape(blast_size);
 	new_blast->position = player.position;
+	new_blast->lifespan = blast_lifespan;
+
 	//Since blast speed is constant, can normalize and set constat x and y velocity values
 	new_blast->velocity.x = BLAST_SPEED * sin(player.body.getRotation() * (PI / 180));
 	new_blast->velocity.y = BLAST_SPEED * cos(player.body.getRotation() * (PI / 180));
@@ -48,9 +52,11 @@ void Game::createBlast()
 		blast_end_ptr = new_blast;
 	}
 	else {
+		new_blast->prev = NULL;
 		blast_ptr = new_blast;
 		blast_end_ptr = new_blast;
 	}
+	new_blast->next = NULL;
 }
 
 //Constant for initial asteroid speed, may be faster when smaller
@@ -60,9 +66,12 @@ void Game::createAsteroid()
 {
 	new_asteroid = new Asteroid();
 
-	new_asteroid->body.setFillColor(sf::Color(0,0,0,0));
+	new_asteroid->size = 3;
+	new_asteroid->body = sf::CircleShape(40.f);
+
+	new_asteroid->body.setFillColor(sf::Color(0, 0, 0, 0));
 	new_asteroid->body.setOutlineThickness(2);
-	new_asteroid->body.setOutlineColor(sf::Color(255,255,255));
+	new_asteroid->body.setOutlineColor(sf::Color(255, 255, 255));
 
 	//randomly place asteroid near edge of screen
 	if (rand() % 2) {
@@ -73,7 +82,7 @@ void Game::createAsteroid()
 			new_asteroid->position.y = rand() % 50 + 50;
 		}
 		else {
-			new_asteroid->position.y = rand() % 50 + (WINDOW_HEIGHT-100);
+			new_asteroid->position.y = rand() % 50 + (WINDOW_HEIGHT - 100);
 		}
 	}
 	else {
@@ -100,10 +109,12 @@ void Game::createAsteroid()
 	//store asteroids in linked list
 	if (asteroid_ptr) {
 		new_asteroid->next = asteroid_ptr;
-		asteroid_ptr->prev = new_asteroid;
 		asteroid_ptr = new_asteroid;
 	}
-	else asteroid_ptr = new_asteroid;
+	else {
+		new_asteroid->next = NULL;
+		asteroid_ptr = new_asteroid;
+	}
 }
 
 //Update Functions
@@ -196,33 +207,36 @@ void Game::updateAsteroids()
 	}
 }
 
-void Game::checkCollision()
+void Game::checkAsteroidCollision()
 {
 	//Asteroid-Blast Collision
 	current_blast = blast_ptr;
 	while (current_blast) {
+		Asteroid* prev_asteroid = NULL;
 		current_asteroid = asteroid_ptr;
 		while (current_asteroid) {
 			if (current_asteroid->body.getGlobalBounds().intersects(current_blast->body.getGlobalBounds())) {
-				breakAsteroid();
-				break;
+				std::cout << "Struct Pos:" << current_asteroid->position.x << ", " << current_asteroid->position.y << std::endl;
+				//Removes Asteroid from linked list
+				if (current_asteroid == asteroid_ptr) {
+					asteroid_ptr = current_asteroid->next;
+					delete current_asteroid;
+					current_asteroid = asteroid_ptr;
+				}
+				else {
+					prev_asteroid->next = current_asteroid->next;
+					delete current_asteroid;
+					current_asteroid = prev_asteroid->next;
+				}
 			}
-			current_asteroid = current_asteroid->next;
+			else {
+				prev_asteroid = current_asteroid;
+				current_asteroid = current_asteroid->next;
+			}
+
 		}
 		current_blast = current_blast->next;
 	}
-}
-
-void Game::breakAsteroid()
-{
-	//Removes Asteroid from linked list
-	if (current_asteroid->prev && current_asteroid->next) {
-		current_asteroid->prev->next = current_asteroid->next;
-		current_asteroid->next->prev = current_asteroid->prev;
-	}
-	else if (current_asteroid->prev) current_asteroid->prev->next = NULL;
-	else if (current_asteroid->next) asteroid_ptr = current_asteroid->next;
-	else asteroid_ptr = NULL;
 }
 
 void Game::breakBlast()
@@ -348,7 +362,7 @@ void Game::update()
 	updateBlasts();
 	updateAsteroids();
 
-	checkCollision();
+	checkAsteroidCollision();
 }
 
 void Game::render()

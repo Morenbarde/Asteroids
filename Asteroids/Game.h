@@ -13,28 +13,27 @@
 struct Ship {
 	sf::Vector2f position;
 	sf::Vector2f velocity;
-	sf::CircleShape body = sf::CircleShape(10.f, 3);
+	sf::CircleShape body;
 };
 
 //Ship Weapon, fired with Spacebar
 struct Blast {
 	sf::Vector2f position;
 	sf::Vector2f velocity;
-	sf::CircleShape body = sf::CircleShape(1.f);
+	sf::CircleShape body;
 	//Blast lasts for 2 seconds, locked to 60fps
-	int lifespan = 80;
-	Blast *next = NULL;
-	Blast* prev = NULL;
+	int lifespan;
+	Blast *next;
+	Blast* prev;
 };
 
 //Obstacles
 struct Asteroid {
 	sf::Vector2f position;
 	sf::Vector2f velocity;
-	float size = 3;
-	sf::CircleShape body = sf::CircleShape(40.f);
-	Asteroid *next = NULL;
-	Asteroid *prev = NULL;
+	float size;
+	sf::CircleShape body;
+	Asteroid *next;
 };
 
 class Game
@@ -54,6 +53,8 @@ private:
 	bool player_moving_forward = false;
 
 	//Linked List containing blasts
+	const float blast_size = 1.f;
+	const int blast_lifespan = 80;
 	Blast *blast_ptr;
 	Blast *blast_end_ptr;
 	Blast *current_blast;
@@ -79,8 +80,7 @@ private:
 	void updateAsteroids();
 
 	//Collision functions
-	void checkCollision();
-	void breakAsteroid();
+	void checkAsteroidCollision();
 	void breakBlast();
 
 public:
