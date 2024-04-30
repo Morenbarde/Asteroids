@@ -100,8 +100,8 @@ void Game::createAsteroid()
 
 	//Gives asteroid random direction to travel
 	int asteroid_angle = rand() % 360;
-	new_asteroid->velocity.x = ASTEROID_SPEED * sin(asteroid_angle * (PI / 180));
-	new_asteroid->velocity.y = ASTEROID_SPEED * cos(asteroid_angle * (PI / 180));
+	new_asteroid->velocity.x = ASTEROID_SPEED * cos(asteroid_angle * (PI / 180));
+	new_asteroid->velocity.y = ASTEROID_SPEED * sin(asteroid_angle * (PI / 180));
 
 	new_asteroid->body.setOrigin(new_asteroid->body.getRadius(), new_asteroid->body.getRadius());
 	new_asteroid->body.setPosition(new_asteroid->position);
@@ -115,6 +115,12 @@ void Game::createAsteroid()
 		new_asteroid->next = NULL;
 		asteroid_ptr = new_asteroid;
 	}
+}
+
+void Game::endGame() {
+	running = false;
+	if (window->isOpen()) window->close();
+
 }
 
 //Update Functions
@@ -210,11 +216,15 @@ void Game::updateAsteroids()
 void Game::checkAsteroidCollision()
 {
 	//Asteroid-Blast Collision
+	Blast* prev_blast = NULL;
 	current_blast = blast_ptr;
+	bool blast_deleted = false;
+
 	while (current_blast) {
 		Asteroid* prev_asteroid = NULL;
 		current_asteroid = asteroid_ptr;
-		while (current_asteroid) {
+		blast_deleted = false;
+		while (current_asteroid && !blast_deleted) {
 			if (current_asteroid->body.getGlobalBounds().intersects(current_blast->body.getGlobalBounds())) {
 				std::cout << "Struct Pos:" << current_asteroid->position.x << ", " << current_asteroid->position.y << std::endl;
 				//Removes Asteroid from linked list
@@ -228,6 +238,18 @@ void Game::checkAsteroidCollision()
 					delete current_asteroid;
 					current_asteroid = prev_asteroid->next;
 				}
+				//Removes Blast from linked list
+				if (current_blast == blast_ptr) {
+					blast_ptr = current_blast->next;
+					delete current_blast;
+					current_blast = blast_ptr;
+				}
+				else {
+					prev_blast->next = current_blast->next;
+					delete current_blast;
+					current_blast = prev_blast->next;
+				}
+				blast_deleted = true;
 			}
 			else {
 				prev_asteroid = current_asteroid;
@@ -235,7 +257,21 @@ void Game::checkAsteroidCollision()
 			}
 
 		}
-		current_blast = current_blast->next;
+		if (!blast_deleted) {
+			prev_blast = current_blast;
+			current_blast = current_blast->next;
+		}
+	}
+}
+
+void Game::checkPlayerCollision()
+{
+	current_asteroid = asteroid_ptr;
+	while (current_asteroid) {
+		if (player.body.getGlobalBounds().intersects(current_asteroid->body.getGlobalBounds())) {
+			endGame();
+		}
+		current_asteroid = current_asteroid->next;
 	}
 }
 
@@ -272,7 +308,7 @@ void Game::pollEvents()
 		switch (event.type) {
 
 		case sf::Event::Closed:
-			window->close();
+			endGame();
 			break;
 
 		case sf::Event::KeyPressed:
@@ -281,8 +317,7 @@ void Game::pollEvents()
 
 			//Escape Key to Close the Game
 			case sf::Keyboard::Escape:
-				window->close();
-				running = false;
+				endGame();
 
 			//Rotate Counterclockwise
 			case sf::Keyboard::Left:
@@ -363,6 +398,7 @@ void Game::update()
 	updateAsteroids();
 
 	checkAsteroidCollision();
+	checkPlayerCollision();
 }
 
 void Game::render()

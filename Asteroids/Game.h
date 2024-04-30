@@ -74,6 +74,8 @@ private:
 	void createBlast();
 	void createAsteroid();
 
+	void endGame();
+
 
 	void updatePlayer();
 	void updateBlasts();
@@ -81,6 +83,7 @@ private:
 
 	//Collision functions
 	void checkAsteroidCollision();
+	void checkPlayerCollision();
 	void breakBlast();
 
 public:
