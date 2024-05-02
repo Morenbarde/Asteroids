@@ -1,9 +1,6 @@
 #include "Game.h"
 #include <iostream>
 
-//Pi constant used for calculations
-float PI = 3.141592653;
-
 void Game::initVariables()
 {
 	std::srand(time(NULL));
@@ -26,10 +23,6 @@ void Game::initWindow()
 	window = new sf::RenderWindow(video_mode, "Asteroids", sf::Style::Fullscreen);
 	window->setFramerateLimit(60);
 }
-
-
-//Constant speed for the blasts
-float BLAST_SPEED = 20;
 
 void Game::createBlast()
 {
@@ -59,15 +52,12 @@ void Game::createBlast()
 	new_blast->next = NULL;
 }
 
-//Constant for initial asteroid speed, may be faster when smaller
-float ASTEROID_SPEED = 2.5; 
-
 void Game::createAsteroid()
 {
 	new_asteroid = new Asteroid();
 
-	new_asteroid->size = 3;
-	new_asteroid->body = sf::CircleShape(40.f);
+	new_asteroid->level = 1;
+	new_asteroid->body = sf::CircleShape(ASTEROID_SIZE_1);
 
 	new_asteroid->body.setFillColor(sf::Color(0, 0, 0, 0));
 	new_asteroid->body.setOutlineThickness(2);
@@ -100,8 +90,8 @@ void Game::createAsteroid()
 
 	//Gives asteroid random direction to travel
 	int asteroid_angle = rand() % 360;
-	new_asteroid->velocity.x = ASTEROID_SPEED * cos(asteroid_angle * (PI / 180));
-	new_asteroid->velocity.y = ASTEROID_SPEED * sin(asteroid_angle * (PI / 180));
+	new_asteroid->velocity.x = ASTEROID_SPEED_1 * cos(asteroid_angle * (PI / 180));
+	new_asteroid->velocity.y = ASTEROID_SPEED_1 * sin(asteroid_angle * (PI / 180));
 
 	new_asteroid->body.setOrigin(new_asteroid->body.getRadius(), new_asteroid->body.getRadius());
 	new_asteroid->body.setPosition(new_asteroid->position);
@@ -117,6 +107,65 @@ void Game::createAsteroid()
 	}
 }
 
+void Game::createAsteroid(float x_pos, float y_pos, int level) {
+	new_asteroid = new Asteroid();
+
+	new_asteroid->level = level;
+
+	float speed = 0;
+
+	switch (level) {
+	case 1:
+		new_asteroid->body = sf::CircleShape(ASTEROID_SIZE_1);
+		speed = ASTEROID_SPEED_1;
+		break;
+	case 2:
+		new_asteroid->body = sf::CircleShape(ASTEROID_SIZE_2);
+		speed = ASTEROID_SPEED_2;
+		break;
+	case 3:
+		new_asteroid->body = sf::CircleShape(ASTEROID_SIZE_3);
+		speed = ASTEROID_SPEED_3;
+		break;
+	default:
+		std::cout << "Create Asteroid: Incompatible Asteroid Level" << std::endl;
+	}
+
+	new_asteroid->body.setFillColor(sf::Color(0, 0, 0, 0));
+	new_asteroid->body.setOutlineThickness(2);
+	new_asteroid->body.setOutlineColor(sf::Color(255, 255, 255));
+
+	new_asteroid->position.x = x_pos;
+	new_asteroid->position.y = y_pos;
+
+	//std::cout << new_asteroid->position.x << " " << new_asteroid->position.y << std::endl;
+
+	//Gives asteroid random direction to travel
+	int asteroid_angle = rand() % 360;
+	new_asteroid->velocity.x = speed * cos(asteroid_angle * (PI / 180));
+	new_asteroid->velocity.y = speed * sin(asteroid_angle * (PI / 180));
+
+	new_asteroid->body.setOrigin(new_asteroid->body.getRadius(), new_asteroid->body.getRadius());
+	new_asteroid->body.setPosition(new_asteroid->position);
+
+	//store asteroids in linked list
+	if (asteroid_ptr) {
+		new_asteroid->next = asteroid_ptr;
+		asteroid_ptr = new_asteroid;
+	}
+	else {
+		new_asteroid->next = NULL;
+		asteroid_ptr = new_asteroid;
+	}
+}
+
+void Game::splitAsteroid() {
+	if (current_asteroid->level != 3) {
+		createAsteroid(current_asteroid->position.x, current_asteroid->position.y, current_asteroid->level + 1);
+		createAsteroid(current_asteroid->position.x, current_asteroid->position.y, current_asteroid->level + 1);
+	}
+}
+
 void Game::endGame() {
 	running = false;
 	if (window->isOpen()) window->close();
@@ -124,10 +173,6 @@ void Game::endGame() {
 }
 
 //Update Functions
-
-
-float ACCELERATION_CONST = .2;
-float DECCELERATION_CONST = .98;
 
 void Game::updatePlayer()
 {
@@ -222,19 +267,23 @@ void Game::checkAsteroidCollision()
 
 	while (current_blast) {
 		Asteroid* prev_asteroid = NULL;
+		Asteroid* next_asteroid;
 		current_asteroid = asteroid_ptr;
 		blast_deleted = false;
 		while (current_asteroid && !blast_deleted) {
-			if (current_asteroid->body.getGlobalBounds().intersects(current_blast->body.getGlobalBounds())) {
+			if (current_blast->body.getGlobalBounds().intersects(current_asteroid->body.getGlobalBounds())) {
 				std::cout << "Struct Pos:" << current_asteroid->position.x << ", " << current_asteroid->position.y << std::endl;
 				//Removes Asteroid from linked list
 				if (current_asteroid == asteroid_ptr) {
 					asteroid_ptr = current_asteroid->next;
+					next_asteroid = asteroid_ptr;
+					splitAsteroid();
 					delete current_asteroid;
-					current_asteroid = asteroid_ptr;
+					current_asteroid = next_asteroid;
 				}
 				else {
 					prev_asteroid->next = current_asteroid->next;
+					splitAsteroid();
 					delete current_asteroid;
 					current_asteroid = prev_asteroid->next;
 				}
