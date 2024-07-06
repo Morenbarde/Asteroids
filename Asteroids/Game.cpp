@@ -4,16 +4,47 @@
 void Game::initVariables()
 {
 	std::srand(time(NULL));
-	player.position.x = WINDOW_WIDTH/2;
-	player.position.y = WINDOW_HEIGHT/2;
-	player.velocity.x = 0;
-	player.velocity.y = 0;
-	player.body = sf::CircleShape(10.f, 3);
-	player.body.setOrigin(player.body.getRadius(), player.body.getRadius()); // Will need to change when changed to sprite
+
+	current_level = 1;
+	
+	ship_texture.loadFromFile("Images/Ship.png");
+	asteroid_texture.loadFromFile("Images/Asteroid.png");
+	resetPlayer();
 
 	blast_ptr = NULL;
 	blast_end_ptr = blast_ptr;
 	asteroid_ptr = NULL;
+
+	game_is_over = false;
+	this->font.loadFromFile("Fonts/CloisterBlack.ttf");
+
+	this->gameEndedText.setFont(font);
+	this->gameEndedText.setString("Game Over");
+	this->gameEndedText.setCharacterSize(150);
+	this->gameEndedText.setOrigin(gameEndedText.getCharacterSize() * gameEndedText.getString().getSize() / 4, 
+		gameEndedText.getCharacterSize() / 2);
+	this->gameEndedText.setPosition(WINDOW_WIDTH/2, WINDOW_HEIGHT/2);
+
+	between_levels = true;
+	this->levelText.setFont(font);
+	this->levelText.setString("Level " + std::to_string(current_level));
+	this->levelText.setCharacterSize(150);
+	this->levelText.setOrigin(levelText.getCharacterSize() * levelText.getString().getSize() / 4,
+		levelText.getCharacterSize() / 2);
+	this->levelText.setPosition(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
+
+	end_level = false;
+	this->endLevelText.setFont(font);
+	this->endLevelText.setString("Level Complete");
+	this->endLevelText.setCharacterSize(150);
+	this->endLevelText.setOrigin(endLevelText.getCharacterSize() * endLevelText.getString().getSize() / 4,
+		endLevelText.getCharacterSize() / 2);
+	this->endLevelText.setPosition(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
+
+	score = 0;
+	this->scoreText.setFont(font);
+	this->scoreText.setCharacterSize(30);
+	this->scoreText.setPosition(10, 10);
 }
 
 void Game::initWindow()
@@ -26,14 +57,14 @@ void Game::initWindow()
 
 void Game::createBlast()
 {
-	new_blast = new Blast();
+	Blast* new_blast = new Blast();
 	new_blast->body = sf::CircleShape(blast_size);
 	new_blast->position = player.position;
 	new_blast->lifespan = blast_lifespan;
 
 	//Since blast speed is constant, can normalize and set constat x and y velocity values
-	new_blast->velocity.x = BLAST_SPEED * sin(player.body.getRotation() * (PI / 180));
-	new_blast->velocity.y = BLAST_SPEED * cos(player.body.getRotation() * (PI / 180));
+	new_blast->velocity.x = BLAST_SPEED * sin(player.body.getRotation() * (PI / 180)) + player.velocity.x;
+	new_blast->velocity.y = BLAST_SPEED * cos(player.body.getRotation() * (PI / 180)) + player.velocity.y;
 
 	new_blast->body.setOrigin(new_blast->body.getRadius(), new_blast->body.getRadius());
 	new_blast->body.setPosition(new_blast->position);
@@ -54,14 +85,12 @@ void Game::createBlast()
 
 void Game::createAsteroid()
 {
-	new_asteroid = new Asteroid();
+	Asteroid* new_asteroid = new Asteroid();
 
 	new_asteroid->level = 1;
 	new_asteroid->body = sf::CircleShape(ASTEROID_SIZE_1);
 
-	new_asteroid->body.setFillColor(sf::Color(0, 0, 0, 0));
-	new_asteroid->body.setOutlineThickness(2);
-	new_asteroid->body.setOutlineColor(sf::Color(255, 255, 255));
+	new_asteroid->body.setTexture(&asteroid_texture);
 
 	//randomly place asteroid near edge of screen
 	if (rand() % 2) {
@@ -93,6 +122,10 @@ void Game::createAsteroid()
 	new_asteroid->velocity.x = ASTEROID_SPEED_1 * cos(asteroid_angle * (PI / 180));
 	new_asteroid->velocity.y = ASTEROID_SPEED_1 * sin(asteroid_angle * (PI / 180));
 
+	//Give asteroid randome spin
+	new_asteroid->rotate_speed = rand() % MAX_ROTATION;
+	if (rand() % 2 == 1) new_asteroid->rotate_speed *= -1;
+
 	new_asteroid->body.setOrigin(new_asteroid->body.getRadius(), new_asteroid->body.getRadius());
 	new_asteroid->body.setPosition(new_asteroid->position);
 
@@ -108,7 +141,7 @@ void Game::createAsteroid()
 }
 
 void Game::createAsteroid(float x_pos, float y_pos, int level) {
-	new_asteroid = new Asteroid();
+	Asteroid* new_asteroid = new Asteroid();
 
 	new_asteroid->level = level;
 
@@ -131,9 +164,7 @@ void Game::createAsteroid(float x_pos, float y_pos, int level) {
 		std::cout << "Create Asteroid: Incompatible Asteroid Level" << std::endl;
 	}
 
-	new_asteroid->body.setFillColor(sf::Color(0, 0, 0, 0));
-	new_asteroid->body.setOutlineThickness(2);
-	new_asteroid->body.setOutlineColor(sf::Color(255, 255, 255));
+	new_asteroid->body.setTexture(&asteroid_texture);
 
 	new_asteroid->position.x = x_pos;
 	new_asteroid->position.y = y_pos;
@@ -144,6 +175,10 @@ void Game::createAsteroid(float x_pos, float y_pos, int level) {
 	int asteroid_angle = rand() % 360;
 	new_asteroid->velocity.x = speed * cos(asteroid_angle * (PI / 180));
 	new_asteroid->velocity.y = speed * sin(asteroid_angle * (PI / 180));
+
+	//Give asteroid randome spin
+	new_asteroid->rotate_speed = rand() % MAX_ROTATION;
+	if (rand() % 2 == 1) new_asteroid->rotate_speed *= -1;
 
 	new_asteroid->body.setOrigin(new_asteroid->body.getRadius(), new_asteroid->body.getRadius());
 	new_asteroid->body.setPosition(new_asteroid->position);
@@ -159,11 +194,26 @@ void Game::createAsteroid(float x_pos, float y_pos, int level) {
 	}
 }
 
-void Game::splitAsteroid() {
+void Game::splitAsteroid(Asteroid* current_asteroid) {
 	if (current_asteroid->level != 3) {
+		score += 25 * current_asteroid->level;
 		createAsteroid(current_asteroid->position.x, current_asteroid->position.y, current_asteroid->level + 1);
 		createAsteroid(current_asteroid->position.x, current_asteroid->position.y, current_asteroid->level + 1);
 	}
+	else {
+		score += 100;
+	}
+
+}
+
+void Game::initiateLevel() {
+	int level = current_level;
+	resetAsteroids();
+	resetPlayer();
+	for (int i = 0; i < level*2; i++) {
+		createAsteroid();
+	}
+	level_active = true;
 }
 
 void Game::endGame() {
@@ -177,8 +227,8 @@ void Game::endGame() {
 void Game::updatePlayer()
 {
 	//Rotates the player if the keys have been pressed and not released
-	if (player_rotating_right) player.body.rotate(2.f);
-	if (player_rotating_left) player.body.rotate(-2.f);
+	if (player_rotating_right) player.body.rotate(3.5f);
+	if (player_rotating_left) player.body.rotate(-3.5f);
 
 	//Gets the angle of the player in radians
 	float player_rotation = player.body.getRotation();
@@ -211,6 +261,7 @@ void Game::updatePlayer()
 //TODO add asteroid collission
 void Game::updateBlasts()
 {
+	Blast* current_blast;
 	if (blast_ptr && !blast_ptr->lifespan) {
 		current_blast = blast_ptr->next;
 		delete blast_ptr;
@@ -239,9 +290,11 @@ void Game::updateBlasts()
 
 void Game::updateAsteroids()
 {
-	current_asteroid = asteroid_ptr;
+	Asteroid* current_asteroid = asteroid_ptr;
 
 	while (current_asteroid) {
+
+		current_asteroid->body.rotate(current_asteroid->rotate_speed);
 		//Adds velocity to position, y negative due to sfml window having y positive downwards
 		current_asteroid->position.x += current_asteroid->velocity.x;
 		current_asteroid->position.y -= current_asteroid->velocity.y;
@@ -258,17 +311,30 @@ void Game::updateAsteroids()
 	}
 }
 
+void Game::updateScore()
+{
+	this->scoreText.setString("Score: " + std::to_string(score));
+}
+
+void Game::updateLevel()
+{
+	this->levelText.setString("Level " + std::to_string(current_level));
+	this->levelText.setOrigin(levelText.getCharacterSize() * levelText.getString().getSize() / 4,
+		levelText.getCharacterSize() / 2);
+	this->levelText.setPosition(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
+}
+
 void Game::checkAsteroidCollision()
 {
 	//Asteroid-Blast Collision
 	Blast* prev_blast = NULL;
-	current_blast = blast_ptr;
+	Blast* current_blast = blast_ptr;
 	bool blast_deleted = false;
 
 	while (current_blast) {
 		Asteroid* prev_asteroid = NULL;
 		Asteroid* next_asteroid;
-		current_asteroid = asteroid_ptr;
+		Asteroid* current_asteroid = asteroid_ptr;
 		blast_deleted = false;
 		while (current_asteroid && !blast_deleted) {
 			if (current_blast->body.getGlobalBounds().intersects(current_asteroid->body.getGlobalBounds())) {
@@ -277,13 +343,13 @@ void Game::checkAsteroidCollision()
 				if (current_asteroid == asteroid_ptr) {
 					asteroid_ptr = current_asteroid->next;
 					next_asteroid = asteroid_ptr;
-					splitAsteroid();
+					splitAsteroid(current_asteroid);
 					delete current_asteroid;
 					current_asteroid = next_asteroid;
 				}
 				else {
 					prev_asteroid->next = current_asteroid->next;
-					splitAsteroid();
+					splitAsteroid(current_asteroid);
 					delete current_asteroid;
 					current_asteroid = prev_asteroid->next;
 				}
@@ -315,22 +381,44 @@ void Game::checkAsteroidCollision()
 
 void Game::checkPlayerCollision()
 {
-	current_asteroid = asteroid_ptr;
+	Asteroid* current_asteroid = asteroid_ptr;
 	while (current_asteroid) {
-		if (player.body.getGlobalBounds().intersects(current_asteroid->body.getGlobalBounds())) {
-			endGame();
+		if (sqrt(pow(player.position.x - current_asteroid->position.x, 2)
+			+ pow(player.position.y - current_asteroid->position.y, 2)) < current_asteroid->body.getRadius()+11) {
+			game_is_over = true;
+			level_active = false;
 		}
 		current_asteroid = current_asteroid->next;
 	}
 }
 
-void Game::breakBlast()
+void Game::resetPlayer()
 {
-	//Removes Asteroid from linked list
-	if (!current_blast->prev && !current_blast->next) blast_ptr = NULL;
-	else if (current_blast->prev && current_blast->next) current_blast->prev->next = current_blast->next;
-	else if (current_blast->prev) current_blast->prev->next = NULL;
-	else if (current_blast->next) blast_ptr = current_blast->next;
+	player.position.x = WINDOW_WIDTH / 2;
+	player.position.y = WINDOW_HEIGHT / 2;
+	player.velocity.x = 0;
+	player.velocity.y = 0;
+	player.body = sf::CircleShape(15.f);
+	player.body.setTexture(&ship_texture);
+	player.body.setOrigin(player.body.getRadius(), player.body.getRadius()); // Will need to change when changed to sprite
+}
+
+void Game::resetAsteroids()
+{
+	Asteroid* next_asteroid = asteroid_ptr;
+	Asteroid* current_asteroid;
+	while (next_asteroid) {
+		current_asteroid = next_asteroid;
+		next_asteroid = next_asteroid->next;
+		delete current_asteroid;
+	}
+	asteroid_ptr = NULL;
+}
+
+void Game::resetScore()
+{
+	score = 0;
+	updateScore();
 }
 
 Game::Game()
@@ -389,7 +477,7 @@ void Game::pollEvents()
 			//Fire Blast
 			case sf::Keyboard::Space:
 				//restrict fire rate to 1 blast per button press
-				if (!blaster_locked) {
+				if (!blaster_locked && !game_is_over && !between_levels && !end_level) {
 					createBlast();
 					blaster_locked = true;
 				}
@@ -397,7 +485,29 @@ void Game::pollEvents()
 
 			//Create Asteroid For Testing
 			case sf::Keyboard::Z:
-				if (sf::Keyboard::isKeyPressed(sf::Keyboard::LAlt)) createAsteroid();
+				if (sf::Keyboard::isKeyPressed(sf::Keyboard::LAlt) && !end_level && !between_levels && !game_is_over) createAsteroid();
+				break;
+			
+			case sf::Keyboard::Enter:
+				if (game_is_over) {
+					current_level = 1;
+					resetScore();
+					resetAsteroids();
+					resetPlayer();
+					game_is_over = false;
+					updateLevel();
+					between_levels = true;
+				}
+				else if (between_levels) {
+					initiateLevel();
+					between_levels = false;
+				}
+				else if (end_level) {
+					current_level += 1;
+					updateLevel();
+					end_level = false;
+					between_levels = true;
+				}
 
 			default:
 				break;
@@ -448,23 +558,40 @@ void Game::update()
 
 	checkAsteroidCollision();
 	checkPlayerCollision();
+
+	updateScore();
+	
+	if (level_active && !asteroid_ptr) {
+		end_level = true;
+		level_active = false;
+	}
+
 }
 
 void Game::render()
 {
 	window->clear();
-	window->draw(player.body);
 
-	current_blast = blast_ptr;
+	Blast* current_blast = blast_ptr;
 	while (current_blast) {
 		window->draw(current_blast->body);
 		current_blast = current_blast->next;
 	}
 
-	current_asteroid = asteroid_ptr;
+	Asteroid* current_asteroid = asteroid_ptr;
 	while (current_asteroid) {
 		window->draw(current_asteroid->body);
 		current_asteroid = current_asteroid->next;
 	}
+
+	if (!game_is_over) window->draw(player.body);
+	else window->draw(gameEndedText);
+
+	if (between_levels) window->draw(levelText);
+	if (end_level) window->draw(endLevelText);
+
+
+	window->draw(scoreText);
+
 	window->display();
 }

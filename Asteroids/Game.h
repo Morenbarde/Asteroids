@@ -32,6 +32,7 @@ struct Asteroid {
 	sf::Vector2f position;
 	sf::Vector2f velocity;
 	int level;
+	float rotate_speed;
 	sf::CircleShape body;
 	Asteroid *next;
 };
@@ -54,6 +55,8 @@ private:
 	float ASTEROID_SIZE_2 = 25.f;
 	float ASTEROID_SIZE_3 = 15.f;
 
+	int MAX_ROTATION = 5;
+
 	//Player Constants
 	float ACCELERATION_CONST = .2;
 	float DECCELERATION_CONST = .98;
@@ -66,7 +69,23 @@ private:
 
 	bool running;
 
+	bool game_is_over;
+	sf::Text gameEndedText;
+	sf::Font font;
+
+	bool between_levels;
+	bool end_level;
+	bool level_active;
+	sf::Text levelText;
+	sf::Text endLevelText;
+
+	int current_level;
+
+	int score;
+	sf::Text scoreText;
+
 	Ship player;
+	sf::Texture ship_texture;
 	bool player_rotating_left = false;
 	bool player_rotating_right = false;
 	bool player_moving_forward = false;
@@ -76,16 +95,11 @@ private:
 	const int blast_lifespan = 80;
 	Blast *blast_ptr;
 	Blast *blast_end_ptr;
-	Blast *current_blast;
-	Blast *new_blast;
-	Blast *dead_blast;
 	bool blaster_locked = false;
 
 	//Linked List containing asteroids
 	Asteroid *asteroid_ptr;
-	Asteroid *current_asteroid;
-	Asteroid *new_asteroid;
-	Asteroid *dead_asteroid;
+	sf::Texture asteroid_texture;
 
 	void initVariables();
 	void initWindow();
@@ -93,19 +107,26 @@ private:
 	void createBlast();
 	void createAsteroid();
 	void createAsteroid(float x_pos, float y_pos, int size);
-	void splitAsteroid();
+	void splitAsteroid(Asteroid* current_asteroid);
 
+	void initiateLevel();
 	void endGame();
 
 
 	void updatePlayer();
 	void updateBlasts();
 	void updateAsteroids();
+	void updateScore();
+	void updateLevel();
 
 	//Collision functions
 	void checkAsteroidCollision();
 	void checkPlayerCollision();
 	void breakBlast();
+
+	void resetPlayer();
+	void resetAsteroids();
+	void resetScore();
 
 public:
 	Game();
