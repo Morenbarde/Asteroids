@@ -11,6 +11,9 @@ void Game::initVariables()
 	asteroid_texture.loadFromFile("Images/Asteroid.png");
 	resetPlayer();
 
+	star_ptr = NULL;
+	initStars();
+
 	blast_ptr = NULL;
 	blast_end_ptr = blast_ptr;
 	asteroid_ptr = NULL;
@@ -47,6 +50,18 @@ void Game::initVariables()
 	this->scoreText.setPosition(10, 10);
 }
 
+void Game::initStars() {
+	Star* new_star;
+	for (int i = 0; i < STAR_COUNT; i++) {
+		new_star = new Star();
+		new_star->body = sf::CircleShape(rand() % 3);
+		new_star->body.setPosition(rand() % WINDOW_WIDTH, rand() % WINDOW_HEIGHT);
+		new_star->body.setFillColor(sf::Color::White);
+		new_star->next = star_ptr;
+		star_ptr = new_star;
+	}
+}
+
 void Game::initWindow()
 {
 	video_mode.width = WINDOW_WIDTH;
@@ -59,6 +74,7 @@ void Game::createBlast()
 {
 	Blast* new_blast = new Blast();
 	new_blast->body = sf::CircleShape(blast_size);
+	new_blast->body.setFillColor(sf::Color(0, 255, 255));
 	new_blast->position = player.position;
 	new_blast->lifespan = blast_lifespan;
 
@@ -210,6 +226,7 @@ void Game::initiateLevel() {
 	int level = current_level;
 	resetAsteroids();
 	resetPlayer();
+	resetStars();
 	for (int i = 0; i < level*2; i++) {
 		createAsteroid();
 	}
@@ -415,6 +432,16 @@ void Game::resetAsteroids()
 	asteroid_ptr = NULL;
 }
 
+void Game::resetStars()
+{
+	Star* current_star = star_ptr;
+	while (current_star) {
+		current_star->body.setRadius(rand() % 3);
+		current_star->body.setPosition(rand() % WINDOW_WIDTH, rand() % WINDOW_HEIGHT);
+		current_star = current_star->next;
+	}
+}
+
 void Game::resetScore()
 {
 	score = 0;
@@ -535,10 +562,6 @@ void Game::pollEvents()
 				player_moving_forward = false;
 				break;
 
-			case sf::Keyboard::Space:
-				blaster_locked = false;
-				break;
-
 			default:
 				break;
 			}
@@ -547,6 +570,10 @@ void Game::pollEvents()
 		default:
 			break;
 		}
+	}
+
+	if (!sf::Keyboard::isKeyPressed(sf::Keyboard::Space)) {
+		blaster_locked = false;
 	}
 }
 
@@ -571,6 +598,12 @@ void Game::update()
 void Game::render()
 {
 	window->clear();
+
+	Star* current_star = star_ptr;
+	while (current_star) {
+		window->draw(current_star->body);
+		current_star = current_star->next;
+	}
 
 	Blast* current_blast = blast_ptr;
 	while (current_blast) {

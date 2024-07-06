@@ -37,6 +37,11 @@ struct Asteroid {
 	Asteroid *next;
 };
 
+struct Star {
+	sf::CircleShape body;
+	Star* next;
+};
+
 class Game
 {
 private:
@@ -91,7 +96,7 @@ private:
 	bool player_moving_forward = false;
 
 	//Linked List containing blasts
-	const float blast_size = 1.f;
+	const float blast_size = 2.f;
 	const int blast_lifespan = 80;
 	Blast *blast_ptr;
 	Blast *blast_end_ptr;
@@ -101,7 +106,11 @@ private:
 	Asteroid *asteroid_ptr;
 	sf::Texture asteroid_texture;
 
+	Star* star_ptr;
+	int STAR_COUNT = 1000;
+
 	void initVariables();
+	void initStars();
 	void initWindow();
 
 	void createBlast();
@@ -126,6 +135,7 @@ private:
 
 	void resetPlayer();
 	void resetAsteroids();
+	void resetStars();
 	void resetScore();
 
 public:
