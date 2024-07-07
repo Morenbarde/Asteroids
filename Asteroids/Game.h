@@ -72,6 +72,8 @@ private:
 	int WINDOW_HEIGHT = 1080;
 	sf::Event event;
 
+	sf::Music music;
+
 	bool running;
 
 	bool game_is_over;

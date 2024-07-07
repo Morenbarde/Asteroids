@@ -18,6 +18,10 @@ void Game::initVariables()
 	blast_end_ptr = blast_ptr;
 	asteroid_ptr = NULL;
 
+	music.openFromFile("Sound/background_music.wav");
+	music.setLoop(true);
+	music.play();
+
 	game_is_over = false;
 	this->font.loadFromFile("Fonts/CloisterBlack.ttf");
 
