@@ -7,7 +7,7 @@ void Game::initVariables()
 
 	current_level = 1;
 	
-	ship_texture.loadFromFile("Images/Ship.png");
+	ship_texture.loadFromFile("Images/Ship_sheet.png");
 	asteroid_texture.loadFromFile("Images/Asteroid.png");
 	resetPlayer();
 
@@ -54,7 +54,7 @@ void Game::initStars() {
 	Star* new_star;
 	for (int i = 0; i < STAR_COUNT; i++) {
 		new_star = new Star();
-		new_star->body = sf::CircleShape(rand() % 3);
+		new_star->body = sf::CircleShape(float(rand() % 3)/2);
 		new_star->body.setPosition(rand() % WINDOW_WIDTH, rand() % WINDOW_HEIGHT);
 		new_star->body.setFillColor(sf::Color::White);
 		new_star->next = star_ptr;
@@ -225,8 +225,6 @@ void Game::splitAsteroid(Asteroid* current_asteroid) {
 void Game::initiateLevel() {
 	int level = current_level;
 	resetAsteroids();
-	resetPlayer();
-	resetStars();
 	for (int i = 0; i < level*2; i++) {
 		createAsteroid();
 	}
@@ -255,6 +253,11 @@ void Game::updatePlayer()
 		//Normalizes the acceleration and adds to both the x and y directiong
 		player.velocity.x += ACCELERATION_CONST * sin(player_rotation * (PI / 180));
 		player.velocity.y += ACCELERATION_CONST * cos(player_rotation * (PI / 180));
+
+		Texture_pos++;
+		if (Texture_pos * SPRITE_WIDTH >= ship_texture.getSize().x) Texture_pos = 1;
+
+		player.body.setTextureRect(sf::IntRect(SPRITE_WIDTH * Texture_pos, 0, SPRITE_WIDTH, SPRITE_HEIGHT));
 	}
 	else {
 		player.velocity.x *= DECCELERATION_CONST;
@@ -339,6 +342,7 @@ void Game::updateLevel()
 	this->levelText.setOrigin(levelText.getCharacterSize() * levelText.getString().getSize() / 4,
 		levelText.getCharacterSize() / 2);
 	this->levelText.setPosition(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2);
+	resetStars();
 }
 
 void Game::checkAsteroidCollision()
@@ -399,12 +403,21 @@ void Game::checkAsteroidCollision()
 void Game::checkPlayerCollision()
 {
 	Asteroid* current_asteroid = asteroid_ptr;
-	while (current_asteroid) {
+	Asteroid* prev_asteroid = NULL;
+	while (current_asteroid && !game_is_over) {
 		if (sqrt(pow(player.position.x - current_asteroid->position.x, 2)
 			+ pow(player.position.y - current_asteroid->position.y, 2)) < current_asteroid->body.getRadius()+11) {
 			game_is_over = true;
 			level_active = false;
+
+			if (current_asteroid == asteroid_ptr) asteroid_ptr = current_asteroid->next;
+			else prev_asteroid->next = current_asteroid->next;
+
+			splitAsteroid(current_asteroid);
+			delete current_asteroid;
+			break;
 		}
+		prev_asteroid = current_asteroid;
 		current_asteroid = current_asteroid->next;
 	}
 }
@@ -415,9 +428,12 @@ void Game::resetPlayer()
 	player.position.y = WINDOW_HEIGHT / 2;
 	player.velocity.x = 0;
 	player.velocity.y = 0;
-	player.body = sf::CircleShape(15.f);
-	player.body.setTexture(&ship_texture);
-	player.body.setOrigin(player.body.getRadius(), player.body.getRadius()); // Will need to change when changed to sprite
+	player.body.setRotation(0);
+	Texture_pos = 0;
+	player.body.setTextureRect(sf::IntRect(SPRITE_WIDTH * Texture_pos, 0, SPRITE_WIDTH, SPRITE_HEIGHT));
+	player.body.setTexture(ship_texture);
+	player.body.setOrigin(player.body.getTextureRect().width/2, player.body.getTextureRect().height/2); // Will need to change when changed to sprite
+	player.body.setPosition(player.position);
 }
 
 void Game::resetAsteroids()
@@ -436,7 +452,7 @@ void Game::resetStars()
 {
 	Star* current_star = star_ptr;
 	while (current_star) {
-		current_star->body.setRadius(rand() % 3);
+		current_star->body.setRadius(float(rand() % 3) / 2);
 		current_star->body.setPosition(rand() % WINDOW_WIDTH, rand() % WINDOW_HEIGHT);
 		current_star = current_star->next;
 	}
@@ -531,6 +547,7 @@ void Game::pollEvents()
 				}
 				else if (end_level) {
 					current_level += 1;
+					resetPlayer();
 					updateLevel();
 					end_level = false;
 					between_levels = true;
@@ -560,6 +577,8 @@ void Game::pollEvents()
 			case sf::Keyboard::Up:
 			case sf::Keyboard::W:
 				player_moving_forward = false;
+				Texture_pos = 0;
+				player.body.setTextureRect(sf::IntRect(SPRITE_WIDTH * Texture_pos, 0, SPRITE_WIDTH, SPRITE_HEIGHT));
 				break;
 
 			default:
@@ -579,7 +598,7 @@ void Game::pollEvents()
 
 void Game::update()
 {
-	updatePlayer();
+	if (!between_levels) updatePlayer();
 	updateBlasts();
 	updateAsteroids();
 

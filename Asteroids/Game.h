@@ -13,7 +13,7 @@
 struct Ship {
 	sf::Vector2f position;
 	sf::Vector2f velocity;
-	sf::CircleShape body;
+	sf::Sprite body;
 };
 
 //Ship Weapon, fired with Spacebar
@@ -91,6 +91,9 @@ private:
 
 	Ship player;
 	sf::Texture ship_texture;
+	int SPRITE_WIDTH = 25;
+	int SPRITE_HEIGHT = 25;
+	int Texture_pos = 0;
 	bool player_rotating_left = false;
 	bool player_rotating_right = false;
 	bool player_moving_forward = false;
