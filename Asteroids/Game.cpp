@@ -22,6 +22,15 @@ void Game::initVariables()
 	music.setLoop(true);
 	music.play();
 
+	blast_sound_buffer.loadFromFile("Sound/laser_fire.wav");
+	blast_sound.setBuffer(blast_sound_buffer);
+
+	asteroid_explosion_sound_buffer.loadFromFile("Sound/asteroid_explosion.wav");
+	asteroid_explosion_sound.setBuffer(asteroid_explosion_sound_buffer);
+
+	ship_explosion_sound_buffer.loadFromFile("Sound/ship_explosion.wav");
+	ship_explosion_sound.setBuffer(ship_explosion_sound_buffer);
+
 	game_is_over = false;
 	this->font.loadFromFile("Fonts/CloisterBlack.ttf");
 
@@ -223,7 +232,6 @@ void Game::splitAsteroid(Asteroid* current_asteroid) {
 	else {
 		score += 100;
 	}
-
 }
 
 void Game::initiateLevel() {
@@ -367,10 +375,10 @@ void Game::checkAsteroidCollision()
 				//Removes Asteroid from linked list
 				if (current_asteroid == asteroid_ptr) {
 					asteroid_ptr = current_asteroid->next;
-					next_asteroid = asteroid_ptr;
+					//next_asteroid = asteroid_ptr;
 					splitAsteroid(current_asteroid);
 					delete current_asteroid;
-					current_asteroid = next_asteroid;
+					current_asteroid = asteroid_ptr;
 				}
 				else {
 					prev_asteroid->next = current_asteroid->next;
@@ -390,6 +398,8 @@ void Game::checkAsteroidCollision()
 					current_blast = prev_blast->next;
 				}
 				blast_deleted = true;
+				asteroid_explosion_sound.play();
+				break;
 			}
 			else {
 				prev_asteroid = current_asteroid;
@@ -419,6 +429,8 @@ void Game::checkPlayerCollision()
 
 			splitAsteroid(current_asteroid);
 			delete current_asteroid;
+
+			ship_explosion_sound.play();
 			break;
 		}
 		prev_asteroid = current_asteroid;
@@ -525,6 +537,7 @@ void Game::pollEvents()
 			case sf::Keyboard::Space:
 				//restrict fire rate to 1 blast per button press
 				if (!blaster_locked && !game_is_over && !between_levels && !end_level) {
+					blast_sound.play();
 					createBlast();
 					blaster_locked = true;
 				}

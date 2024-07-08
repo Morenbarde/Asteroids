@@ -99,6 +99,8 @@ private:
 	bool player_rotating_left = false;
 	bool player_rotating_right = false;
 	bool player_moving_forward = false;
+	sf::SoundBuffer ship_explosion_sound_buffer;
+	sf::Sound ship_explosion_sound;
 
 	//Linked List containing blasts
 	const float blast_size = 2.f;
@@ -106,10 +108,14 @@ private:
 	Blast *blast_ptr;
 	Blast *blast_end_ptr;
 	bool blaster_locked = false;
+	sf::SoundBuffer blast_sound_buffer;
+	sf::Sound blast_sound;
 
 	//Linked List containing asteroids
 	Asteroid *asteroid_ptr;
 	sf::Texture asteroid_texture;
+	sf::SoundBuffer asteroid_explosion_sound_buffer;
+	sf::Sound asteroid_explosion_sound;
 
 	Star* star_ptr;
 	int STAR_COUNT = 1000;
